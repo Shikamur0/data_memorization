@@ -1,11 +1,10 @@
 use chrono::Utc;
 use chrono::Datelike;
-use rand::seq::SliceRandom;
-use rand::SeedableRng;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::io;
 
 #[derive(Deserialize)]
 struct WordList {
@@ -21,10 +20,21 @@ fn load_words_from_json<P: AsRef<Path>>(path: P) -> Result<Vec<String>, Box<dyn 
 
 fn get_daily_words(words: &[String], count: usize) -> Vec<String> {
     let today = Utc::now().date_naive().ordinal();
-    let mut rng = rand::rngs::StdRng::seed_from_u64(today as u64);
-    let mut selected_words = words.to_vec();
-    selected_words.shuffle(&mut rng);
-    selected_words.into_iter().take(count).collect()
+    let total_words = words.len();
+    
+    // Используем остаток от деления, чтобы избежать выхода за пределы массива
+    let start_index = ((today - 1) as usize) % total_words;
+
+    // Создаем вектор для выбранных слов
+    let mut selected_words = Vec::new();
+
+    // Заполняем вектор выбранными словами в зависимости от текущего дня
+    for i in 0..count {
+        let index = (start_index + i) % total_words; // Индекс слов с учетом зацикливания
+        selected_words.push(words[index].clone());
+    }
+
+    selected_words
 }
 
 fn main() {
@@ -42,4 +52,8 @@ fn main() {
     
     // Выводим слова
     println!("Слова дня: {:?}", daily_words);
+
+    println!("Нажмите Enter, чтобы завершить процесс...");
+    let mut input = String::new();
+    io::stdin().read_line(&mut input).unwrap();
 }
